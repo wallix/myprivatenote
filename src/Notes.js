@@ -17,6 +17,8 @@ class Notes extends Component {
     this.onDownloadNote = this.onDownloadNote.bind(this);
     this.onExpandNote = this.onExpandNote.bind(this);
     this.onCollapseNote = this.onCollapseNote.bind(this);
+    this.onShareNote = this.onShareNote.bind(this);
+    this.onShareClose = this.onShareClose.bind(this);
   }
 
   render() {
@@ -26,8 +28,15 @@ class Notes extends Component {
           <div className="tile is-child box account-id">
             <span className="icon is-small is-left">
               <i className="fa fa-user" />{this.props.login}
+              <i className="fa fa-arrow-right" />{this.props.store.session.login}
             </span>
           </div>
+          <ShareNote
+            note={this.state.noteToShare}
+            session={this.props.store.session}
+            onClose={this.onShareClose}
+            downloadContent={this.downloadContent}
+          />
           <CreateNote
             onSave={this.onSaveNote}
             onImport={this.onImportNote}
@@ -40,6 +49,7 @@ class Notes extends Component {
               onCollapse={() => this.onCollapseNote(note)}
               onDelete={() => this.onDeleteNote(note)}
               onDownload={() => this.onDownloadNote(note)}
+              onShare={() => this.onShareNote(note)}
             />
           )}
         </div>
@@ -59,7 +69,7 @@ class Notes extends Component {
 
   // add to the collection of notes a previously downloaded note
   async onImportNote(note) {
-    await this.props.store.save(note);
+    await this.props.store.saveEncrypted(note);
     await this.loadNotes();
     await this.onExpandNote(note);
   }
@@ -77,7 +87,7 @@ class Notes extends Component {
       let url = reader.result;
       // create a download link
       var link = document.createElement("a");
-      link.download = note.id + fileNameExtension;
+      link.download = note.dataPepsId + fileNameExtension;
       link.href = url;
       document.body.appendChild(link);
 
@@ -86,7 +96,7 @@ class Notes extends Component {
       document.body.removeChild(link);
     };
     await this.props.store.getContent(note);
-    reader.readAsDataURL(new Blob([note.content]));
+    reader.readAsDataURL(new Blob([note.encryptedContent]));
     delete note.content;
   }
 
@@ -108,6 +118,16 @@ class Notes extends Component {
   async loadNotes() {
     let notes = await this.props.store.getNotes();
     this.setState({ notes });
+  }
+
+  // Open the share note modal
+  async onShareNote(note) {
+    this.setState({ noteToShare: note });
+  }
+
+  // Close the share note modal
+  async onShareClose() {
+    this.setState({ noteToShare: null });
   }
 }
 
@@ -201,8 +221,8 @@ class CreateNote extends Component {
     reader.onloadend = (e) => {
       try {
         // convert content to utf8 string
-        let content = new TextDecoder().decode(new Uint8Array(reader.result));
-        this.props.onImport({ content, id });
+        let encryptedContent = new Uint8Array(reader.result);
+        this.props.onImport({ encryptedContent, dataPepsId: id });
       }
       catch (e) {
         console.log("ERROR: on importing a note: ", e);
@@ -230,7 +250,7 @@ class CreateNote extends Component {
 }
 
 // represents the user's note (saved or imported)
-const Note = ({ note, onExpand, onCollapse, onDelete, onDownload }) => {
+const Note = ({ note, onExpand, onCollapse, onDelete, onDownload, onShare }) => {
   return (
     <div className="tile is-child box">
       <article className="media">
@@ -244,11 +264,83 @@ const Note = ({ note, onExpand, onCollapse, onDelete, onDownload }) => {
             <i className="fa fa-compress" onClick={onCollapse} />
           }
           <i className="fa fa-download" onClick={onDownload} />
+          <i className="fa fa-share" onClick={onShare} />
           <i className="fa fa-trash" onClick={onDelete} />
         </div>
       </article>
     </div>
   );
+};
+
+// A modal to share a note
+class ShareNote extends Component {
+
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      // Login of the user with whom the note is shared
+      login: '',
+    }
+    this.onLoginChange = this.onLoginChange.bind(this);
+    this.onShare = this.onShare.bind(this);
+  }
+
+  render() {
+    if (this.props.note == null) {
+      return null;
+    }
+    return (
+      <div className="modal is-active">
+        <div className="modal-background"></div>
+        <div className="modal-content">
+          <div className="box">
+            <h1>Share note {this.props.note.id}</h1>
+            <div className="field">
+              <div className="control has-icons-left">
+                <input
+                  className="input"
+                  type="text"
+                  value={this.state.login}
+                  placeholder="Account id"
+                  onChange={this.onLoginChange}
+                />
+                <span className="icon is-small is-left">
+                  <i className="fa fa-user"></i>
+                </span>
+              </div>
+            </div>
+            <div className="field is-grouped">
+              <div className="control">
+                <button className="button" onClick={this.onShare}>
+                  Share the note
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button className="modal-close is-large" aria-label="close" onClick={this.props.onClose} />
+      </div>
+    );
+  }
+
+  // Called each time the value in the sharer login field changes
+  onLoginChange(e) {
+    this.setState({ login: e.target.value });
+  }
+
+  // Called when the share button is clicked
+  async onShare() {
+    if (this.state.login === '') {
+      return;
+    }
+    // Add the sharerLogin to the sharing group of the resource
+    await this.props.session.Resource.extendSharingGroup(
+      this.props.note.dataPepsId,
+      [this.state.login]
+    );
+    this.props.onClose();
+  }
 };
 
 export default Notes;

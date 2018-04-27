@@ -2,6 +2,6 @@
   padding-left: 10px;
   cursor: pointer;
 }
-.account-id .fa-user {
-  padding-right: 10px; 
+.account-id .fa {
+  padding: 10px;
 }

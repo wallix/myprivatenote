@@ -56,18 +56,24 @@ export default class {
 
   // Save the note
   async save(note) {
+    note = await this._encryptNote(note);
+    this.saveEncrypted(note)
+  }
+
+  // Save the encrypted note
+  async saveEncrypted(note) {
     if (note.id === undefined) {
       note.id = Date.now().toString();
     }
-    note = await this._encryptNote(note);
     let tx = this.database.transaction([
       STORENAME_METADATA,
       STORENAME_CONTENT
     ], 'readwrite');
     let storeMetadata = tx.objectStore(STORENAME_METADATA);
     let storeContent = tx.objectStore(STORENAME_CONTENT);
-    let content = note.content;
+    let content = note.encryptedContent;
     delete note.content;
+    delete note.encryptedContent;
     storeMetadata.put(note, note.id);
     storeContent.put(content, note.id);
     return new Promise((resolve, reject) => {
@@ -85,8 +91,8 @@ export default class {
     // Create a DataPeps resource to encrypt the note
     let resource = await this.session.Resource.create("myprivatenote/note", {}, [this.session.login]);
     // Encrypt the note content
-    let encrypted = resource.encrypt(new TextEncoder().encode(note.content));
-    return { ...note, dataPepsId: resource.id.toString(), content: encrypted };
+    let encryptedContent = resource.encrypt(new TextEncoder().encode(note.content));
+    return { ...note, dataPepsId: resource.id.toString(), encryptedContent };
   }
 
   // Get all notes stored without contents
@@ -104,9 +110,9 @@ export default class {
     });
   }
 
-  // Fill the note.content field
+  // Fill the note.content and encryptedContent field
   async getContent(note) {
-    note.content = await this._get(note.id, STORENAME_CONTENT);
+    note.encryptedContent = await this._get(note.id, STORENAME_CONTENT);
     note.content = await this._decryptNote(note);
   }
 
@@ -114,7 +120,7 @@ export default class {
     // Get the DataPeps resource that was used to encrypt the note
     let resource = await this.session.Resource.get(note.dataPepsId);
     // Decrypt the note content
-    return new TextDecoder().decode(resource.decrypt(note.content));
+    return new TextDecoder().decode(resource.decrypt(note.encryptedContent));
   }
 
   // delete a note
