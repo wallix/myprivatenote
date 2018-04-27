@@ -1,3 +1,6 @@
+import { sign } from './Sign'
+import * as DataPeps from 'datapeps-sdk';
+
 // Name of the store where notes metadata are stored
 export const STORENAME_METADATA = "note-metadata";
 
@@ -9,10 +12,16 @@ export default class {
   constructor(login) {
     this.login = login;
     this.database = null;
+    this.session = null;
   }
 
   // Initialize the store
-  init() {
+  async init() {
+    await this._initDataPepsSession();
+    await this._initDatabase();
+  }
+
+  _initDatabase() {
     return new Promise((resolve, reject) => {
       // Openning database of login
       let databaseConnection = indexedDB.open(this.login);
@@ -36,11 +45,21 @@ export default class {
     })
   }
 
+  async _initDataPepsSession() {
+    // request delegated access
+    let accessRequest = await DataPeps.requestDelegatedAccess(this.login, sign);
+    // open a window for delegated access request resolution and resolve the request
+    accessRequest.openResolver();
+    // wait for the resolution
+    this.session = await accessRequest.waitSession();
+  }
+
   // Save the note
   async save(note) {
     if (note.id === undefined) {
       note.id = Date.now().toString();
     }
+    note = await this._encryptNote(note);
     let tx = this.database.transaction([
       STORENAME_METADATA,
       STORENAME_CONTENT
@@ -61,6 +80,15 @@ export default class {
     });
   }
 
+  // Encrypts a note with DataPeps, encrypt the content file and add the dataPepsId metadata
+  async _encryptNote(note) {
+    // Create a DataPeps resource to encrypt the note
+    let resource = await this.session.Resource.create("myprivatenote/note", {}, [this.session.login]);
+    // Encrypt the note content
+    let encrypted = resource.encrypt(new TextEncoder().encode(note.content));
+    return { ...note, dataPepsId: resource.id.toString(), content: encrypted };
+  }
+
   // Get all notes stored without contents
   async getNotes() {
     let tx = this.database.transaction(STORENAME_METADATA, 'readonly');
@@ -79,6 +107,14 @@ export default class {
   // Fill the note.content field
   async getContent(note) {
     note.content = await this._get(note.id, STORENAME_CONTENT);
+    note.content = await this._decryptNote(note);
+  }
+
+  async _decryptNote(note) {
+    // Get the DataPeps resource that was used to encrypt the note
+    let resource = await this.session.Resource.get(note.dataPepsId);
+    // Decrypt the note content
+    return new TextDecoder().decode(resource.decrypt(note.content));
   }
 
   // delete a note
