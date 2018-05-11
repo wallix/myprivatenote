@@ -56,15 +56,15 @@ export default class {
 
   // Save the note
   async save(note) {
+    if (note.id === undefined) {
+      note.id = Date.now().toString();
+    }
     note = await this._encryptNote(note);
     this.saveEncrypted(note)
   }
 
   // Save the encrypted note
   async saveEncrypted(note) {
-    if (note.id === undefined) {
-      note.id = Date.now().toString();
-    }
     let tx = this.database.transaction([
       STORENAME_METADATA,
       STORENAME_CONTENT
@@ -89,7 +89,11 @@ export default class {
   // Encrypts a note with DataPeps, encrypt the content file and add the dataPepsId metadata
   async _encryptNote(note) {
     // Create a DataPeps resource to encrypt the note
-    let resource = await this.session.Resource.create("myprivatenote/note", {}, [this.session.login]);
+    let resource = await this.session.Resource.create("myprivatenote/note", {
+      description: "note " + note.id + ": " + ((note.content.length > 23) ? note.content.substring(0,20) + "..." : note.content),
+      MIMEType: "text/plain",
+      URI: window.location.origin + "#" + note.id
+    }, [this.session.login]);
     // Encrypt the note content
     let encryptedContent = resource.encrypt(new TextEncoder().encode(note.content));
     return { ...note, dataPepsId: resource.id.toString(), encryptedContent };
