@@ -57,8 +57,9 @@ class Notes extends Component {
     );
   }
 
-  componentDidMount() {
-    this.loadNotes();
+  async componentDidMount() {
+    await this.loadNotes();
+    this.loadNoteInURL();
   }
 
   // Save a new note
@@ -69,6 +70,7 @@ class Notes extends Component {
 
   // add to the collection of notes a previously downloaded note
   async onImportNote(note) {
+    note.id = Date.now().toString();
     await this.props.store.saveEncrypted(note);
     await this.loadNotes();
     await this.onExpandNote(note);
@@ -118,6 +120,14 @@ class Notes extends Component {
   async loadNotes() {
     let notes = await this.props.store.getNotes();
     this.setState({ notes });
+  }
+
+  loadNoteInURL() {
+    if (window.location.hash.length >= 1) {
+      let id = window.location.hash.substring(1)
+      this.state.notes.forEach(n => n.id === id ? this.onExpandNote(n): {});
+      window.location.href = window.location.href
+    }
   }
 
   // Open the share note modal
@@ -252,7 +262,7 @@ class CreateNote extends Component {
 // represents the user's note (saved or imported)
 const Note = ({ note, onExpand, onCollapse, onDelete, onDownload, onShare }) => {
   return (
-    <div className="tile is-child box">
+    <div id={note.id} className="tile is-child box">
       <article className="media">
         <div className="media-content">
           <div>ID: {note.id}</div>
