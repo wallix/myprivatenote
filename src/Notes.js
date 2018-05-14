@@ -70,6 +70,7 @@ class Notes extends Component {
 
   // add to the collection of notes a previously downloaded note
   async onImportNote(note) {
+    note.id = Date.now().toString();
     await this.props.store.saveEncrypted(note);
     await this.loadNotes();
     await this.onExpandNote(note);

@@ -65,6 +65,9 @@ export default class {
 
   // Save the encrypted note
   async saveEncrypted(note) {
+    if (note.id == null) {
+      throw new Error('Saving note with empty id');
+    }
     let tx = this.database.transaction([
       STORENAME_METADATA,
       STORENAME_CONTENT
