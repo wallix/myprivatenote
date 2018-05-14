@@ -93,7 +93,7 @@ export default class {
   async _encryptNote(note) {
     // Create a DataPeps resource to encrypt the note
     let resource = await this.session.Resource.create("myprivatenote/note", {
-      description: "note " + note.id + ": " + ((note.content.length > 23) ? note.content.substring(0,20) + "..." : note.content),
+      description: "note " + note.id,
       MIMEType: "text/plain",
       URI: window.location.origin + "#" + note.id
     }, [this.session.login]);
