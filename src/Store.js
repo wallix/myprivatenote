@@ -93,10 +93,12 @@ export default class {
   async _encryptNote(note) {
     // Create a DataPeps resource to encrypt the note
     let resource = await this.session.Resource.create("myprivatenote/note", {
-      description: "note " + note.id,
+      description: note.description ? note.description : ("note " + note.id),
       MIMEType: "text/plain",
       URI: window.location.origin + "#" + note.id
     }, [this.session.login]);
+    // Delete descrition field, as we don't want to save as clear metadata
+    delete note.description
     // Encrypt the note content
     let encryptedContent = resource.encrypt(new TextEncoder().encode(note.content));
     return { ...note, dataPepsId: resource.id.toString(), encryptedContent };
@@ -120,14 +122,16 @@ export default class {
   // Fill the note.content and encryptedContent field
   async getContent(note) {
     note.encryptedContent = await this._get(note.id, STORENAME_CONTENT);
-    note.content = await this._decryptNote(note);
+    await this._decryptNote(note);
   }
 
   async _decryptNote(note) {
     // Get the DataPeps resource that was used to encrypt the note
     let resource = await this.session.Resource.get(note.dataPepsId);
     // Decrypt the note content
-    return new TextDecoder().decode(resource.decrypt(note.encryptedContent));
+    note.content = new TextDecoder().decode(resource.decrypt(note.encryptedContent));
+    // Set the note description from DataPeps resource payload
+    note.description = resource.payload.description
   }
 
   // delete a note

@@ -125,7 +125,7 @@ class Notes extends Component {
   loadNoteInURL() {
     if (window.location.hash.length >= 1) {
       let id = window.location.hash.substring(1)
-      this.state.notes.forEach(n => n.id === id ? this.onExpandNote(n): {});
+      this.state.notes.forEach(n => n.id === id ? this.onExpandNote(n) : {});
       window.location.href = window.location.href
     }
   }
@@ -150,9 +150,11 @@ class CreateNote extends Component {
     this.state = {
       textAreaContent: '',
       fileInputValue: '',
+      description: '',
     }
 
     this.onTextAreaChange = this.onTextAreaChange.bind(this);
+    this.onDescriptionChange = this.onDescriptionChange.bind(this);
     this.onSave = this.onSave.bind(this);
     this.onUpload = this.onUpload.bind(this);
     this.onFileInputClick = this.onFileInputClick.bind(this);
@@ -163,6 +165,17 @@ class CreateNote extends Component {
       <div className="tile is-child box">
         <article className="media">
           <div className="media-content">
+            <div className="field">
+              <div className="control">
+              <input
+                  type="text"
+                  className="input"
+                  placeholder="Title"
+                  onChange={this.onDescriptionChange}
+                  value={this.state.description}
+                />
+              </div>
+            </div>
             <div className="field">
               <div className="control">
                 <textarea
@@ -214,10 +227,18 @@ class CreateNote extends Component {
     this.setState({ textAreaContent: e.target.value });
   }
 
+  // called each time title changes
+  onDescriptionChange(e) {
+    this.setState({ description: e.target.value });
+  }
+
   // called to save a new note
   onSave() {
-    this.props.onSave({ content: this.state.textAreaContent });
-    this.setState({ textAreaContent: '' });
+    this.props.onSave({
+      content: this.state.textAreaContent,
+      description: this.state.description
+    });
+    this.setState({ textAreaContent: '', description: '' });
   }
 
   // called to upload to database a previously downloaded note
@@ -266,6 +287,7 @@ const Note = ({ note, onExpand, onCollapse, onDelete, onDownload, onShare }) => 
       <article className="media">
         <div className="media-content">
           <div>ID: {note.id}</div>
+          {note.description != null ? <div>Title: {note.description} </div> : null}
           {note.content != null ? <div>{note.content}</div> : null}
         </div>
         <div className="media-right">
