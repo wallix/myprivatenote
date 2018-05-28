@@ -1,7 +1,7 @@
 import * as tweetnacl from 'tweetnacl';
 
 // The identifier of your application.
-let applicationID = 'myprivatenote@datapeps.com';
+let applicationID = 'myprivatenote';
 
 // This secretToken MUST be never published.
 // In the real world the application server MUST retains this secretToken.
