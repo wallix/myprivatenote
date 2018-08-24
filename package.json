@@ -5,10 +5,10 @@
   "dependencies": {
     "bulma": "^0.6.2",
     "datapeps-sdk": "^0.0.34",
+    "font-awesome": "^4.7.0",
     "react": "^16.3.1",
     "react-dom": "^16.3.1",
-    "react-scripts": "1.1.4",
-    "font-awesome": "^4.7.0"
+    "react-scripts": "^1.1.5"
   },
   "scripts": {
     "start": "react-scripts start",
